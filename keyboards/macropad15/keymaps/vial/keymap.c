@@ -475,24 +475,46 @@ static void oled_draw_idle(void) {
     draw_big_text(line, 34, fit_scale(line, 3)); /* 24 px cao */
 }
 
-/* ----- Man hinh khi bam phim: ten TAT CA phim dang giu, chu to -----
- * 1 phim: to het man hinh, 2 phim: moi phim 32 px, 3-4 phim: moi phim 16 px.
+/* ve chuoi tu x, y, len y nhan ban s lan */
+static void draw_big_string(const char *str, uint8_t x, uint8_t y, uint8_t s) {
+    for (uint8_t i = 0; str[i]; i++) draw_big_char(x + (uint8_t)(i * 6 * s), y, str[i], s);
+}
+
+/* ----- Man hinh khi bam phim: ten TAT CA phim dang giu, xep ngang ca man hinh -----
+ * n=1: to het man hinh; n>1: cac phim cach nhau tren cung 1 hang, scale toi nho nhat.
  */
 static void oled_draw_keys(void) {
-    uint8_t n     = held_n ? held_n : 1;
-    uint8_t row_h = OLED_DISPLAY_HEIGHT / n;
-    uint8_t max_s = row_h / 8;
-    if (max_s > 6) max_s = 6;
+    uint8_t n = held_n ? held_n : 1;
+    char labels[HELD_MAX][12];
+    uint8_t lens[HELD_MAX];
 
     for (uint8_t i = 0; i < n; i++) {
-        /* phim bam sau cung o tren cung */
         uint16_t kc = held_n ? held[held_n - 1 - i] : last_kc;
-        char     t[12];
-        key_label(kc, t);
+        key_label(kc, labels[i]);
+        lens[i] = (uint8_t)strlen(labels[i]);
+        if (lens[i] == 0) lens[i] = 1;
+    }
 
-        uint8_t s = fit_scale(t, max_s);
-        uint8_t y = (uint8_t)(i * row_h + (row_h - 8 * s) / 2);
-        draw_big_text(t, y, s);
+    uint8_t s = 6;
+    for (;;) {
+        uint16_t w = 0;
+        for (uint8_t i = 0; i < n; i++) w += (uint16_t)(lens[i] * 6 * s - s);
+        if (n > 1) w += (uint16_t)((n - 1) * 4);
+        if ((int)w <= OLED_DISPLAY_WIDTH) break;
+        if (s <= 1) break;
+        s--;
+    }
+
+    uint16_t w = 0;
+    for (uint8_t i = 0; i < n; i++) w += (uint16_t)(lens[i] * 6 * s - s);
+    if (n > 1) w += (uint16_t)((n - 1) * 4);
+    uint8_t x = (uint8_t)((OLED_DISPLAY_WIDTH - w) / 2);
+    uint8_t y = (uint8_t)((OLED_DISPLAY_HEIGHT - 8 * s) / 2);
+
+    for (uint8_t i = 0; i < n; i++) {
+        uint16_t tw = (uint16_t)(lens[i] * 6 * s - s);
+        draw_big_string(labels[i], x, y, s);
+        x = (uint16_t)(x + tw + ((n > 1) ? 4 : 0));
     }
 }
 
