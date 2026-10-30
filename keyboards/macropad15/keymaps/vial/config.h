@@ -19,7 +19,8 @@
 #define I2C_DRIVER I2CD0
 #define I2C1_SDA_PIN GP20
 #define I2C1_SCL_PIN GP21
-#define OLED_TIMEOUT 60000
+/* Man hinh OLED giu mo lien tuc: 0 = khong tat tu dong (OLED_TIMEOUT 0 = luon on) */
+#define OLED_TIMEOUT 0
 #define OLED_BRIGHTNESS 255
 /* Man hinh 128x64 (0.96"). Neu dung man 128x32 thi doi thanh OLED_DISPLAY_128X32 */
 #define OLED_DISPLAY_128X64

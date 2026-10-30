@@ -287,13 +287,13 @@ oled_rotation_t oled_init_user(oled_rotation_t rotation) {
 
 static const char *layer_name(uint8_t layer) {
     switch (layer) {
-        case L_BASE:  return "Base";
-        case L_FN1:   return "Layer1";
-        case L_NUM:   return "Numpad";
-        case L_MEDIA: return "Media";
-        case L_NOKIA: return "Nokia";
+        case L_BASE:  return "BASE";
+        case L_FN1:   return "LAYER1";
+        case L_NUM:   return "NUMPAD";
+        case L_MEDIA: return "MEDIA";
+        case L_NOKIA: return "NOKIA";
         case L_FN:    return "FN";
-        default:      return "Layer";
+        default:      return "LAYER";
     }
 }
 
@@ -389,8 +389,8 @@ static void key_label(uint16_t kc, char *out) {
 }
 
 /* ----- Theo doi phim dang bam ----- */
-#define HELD_MAX 4
-#define SHOW_AFTER_MS 700
+#define HELD_MAX      4
+#define SHOW_AFTER_MS 700 /* giu hien ten phim them 0,7 s sau khi nha */
 static uint16_t held[HELD_MAX];
 static uint8_t  held_n    = 0;
 static uint16_t last_kc   = 0;
@@ -400,9 +400,14 @@ static bool     have_last = false;
 static void oled_track_key(uint16_t keycode, bool pressed) {
     if (keycode == KC_NO || keycode == KC_TRNS) return;
     if (pressed) {
-        for (uint8_t i = 0; i < held_n; i++) if (held[i] == keycode) goto done;
-        if (held_n < HELD_MAX) held[held_n++] = keycode;
-        else { for (uint8_t i = 1; i < HELD_MAX; i++) held[i - 1] = held[i]; held[HELD_MAX - 1] = keycode; }
+        for (uint8_t i = 0; i < held_n; i++)
+            if (held[i] == keycode) goto done;
+        if (held_n < HELD_MAX) {
+            held[held_n++] = keycode;
+        } else {
+            for (uint8_t i = 1; i < HELD_MAX; i++) held[i - 1] = held[i];
+            held[HELD_MAX - 1] = keycode;
+        }
     } else {
         for (uint8_t i = 0; i < held_n; i++) {
             if (held[i] == keycode) {
@@ -416,111 +421,101 @@ done:
     last_kc   = keycode;
     have_last = true;
     last_time = timer_read32();
-    oled_on();
 }
 
-/* ----- Ve chu phong to (scale x) bang pixel ----- */
+/* ----- Ve chu phong to: font 5x8 nhan ban s lan ----- */
 static void draw_big_char(uint8_t x, uint8_t y, char c, uint8_t s) {
     for (uint8_t col = 0; col < 5; col++) {
         uint8_t bits = pgm_read_byte(&font[((uint8_t)c - OLED_FONT_START) * OLED_FONT_WIDTH + col]);
         for (uint8_t row = 0; row < 8; row++) {
             if (bits & (1 << row)) {
                 for (uint8_t dx = 0; dx < s; dx++)
-                    for (uint8_t dy = 0; dy < s; dy++)
-                        oled_write_pixel(x + col * s + dx, y + row * s + dy, true);
+                    for (uint8_t dy = 0; dy < s; dy++) oled_write_pixel(x + col * s + dx, y + row * s + dy, true);
             }
         }
     }
 }
 
-static void draw_big_text(const char *str, uint8_t y, uint8_t s) {
+static uint8_t text_width(const char *str, uint8_t s) {
     uint8_t len = strlen(str);
-    uint8_t w   = len * 6 * s - s; /* bo khoang trong cuoi */
-    uint8_t x   = (OLED_DISPLAY_WIDTH > w) ? (OLED_DISPLAY_WIDTH - w) / 2 : 0;
-    for (uint8_t i = 0; i < len; i++) draw_big_char(x + i * 6 * s, y, str[i], s);
+    return len ? (uint8_t)(len * 6 * s - s) : 0;
+}
+
+/* scale lon nhat (<= max_s) ma chuoi con vua be ngang man hinh */
+static uint8_t fit_scale(const char *str, uint8_t max_s) {
+    if (!str[0]) return 1;
+    uint8_t s = max_s;
+    while (s > 1 && text_width(str, s) > OLED_DISPLAY_WIDTH) s--;
+    return s;
+}
+
+/* ve chuoi canh giua theo chieu ngang, goc tren tai y */
+static void draw_big_text(const char *str, uint8_t y, uint8_t s) {
+    uint8_t w = text_width(str, s);
+    uint8_t x = (w < OLED_DISPLAY_WIDTH) ? (uint8_t)((OLED_DISPLAY_WIDTH - w) / 2) : 0;
+    for (uint8_t i = 0; str[i]; i++) draw_big_char(x + i * 6 * s, y, str[i], s);
+}
+
+/* ----- Man hinh khi ranh: dung 2 dong chu to -----
+ *   dong 1: "MACROPAD15"
+ *   dong 2: ten layer dang bat (hoac "LATCH ?" khi dang cho chon phim)
+ */
+static void oled_draw_idle(void) {
+    char line[12];
+
+    strcpy(line, "MACROPAD15");
+    draw_big_text(line, 4, fit_scale(line, 2)); /* 10 ky tu -> 16 px cao */
+
+    if (latch_armed) {
+        strcpy(line, "LATCH ?");
+    } else {
+        strncpy(line, layer_name(get_highest_layer(layer_state | default_layer_state)), sizeof(line) - 1);
+        line[sizeof(line) - 1] = 0;
+    }
+    draw_big_text(line, 34, fit_scale(line, 3)); /* 24 px cao */
+}
+
+/* ----- Man hinh khi bam phim: ten TAT CA phim dang giu, chu to -----
+ * 1 phim: to het man hinh, 2 phim: moi phim 32 px, 3-4 phim: moi phim 16 px.
+ */
+static void oled_draw_keys(void) {
+    uint8_t n     = held_n ? held_n : 1;
+    uint8_t row_h = OLED_DISPLAY_HEIGHT / n;
+    uint8_t max_s = row_h / 8;
+    if (max_s > 6) max_s = 6;
+
+    for (uint8_t i = 0; i < n; i++) {
+        /* phim bam sau cung o tren cung */
+        uint16_t kc = held_n ? held[held_n - 1 - i] : last_kc;
+        char     t[12];
+        key_label(kc, t);
+
+        uint8_t s = fit_scale(t, max_s);
+        uint8_t y = (uint8_t)(i * row_h + (row_h - 8 * s) / 2);
+        draw_big_text(t, y, s);
+    }
 }
 
 static uint32_t last_sig = 0xFFFFFFFF;
 
 bool oled_task_user(void) {
-    bool show_key = have_last && (held_n > 0 || timer_elapsed32(last_time) < SHOW_AFTER_MS);
-
-    uint8_t top  = get_highest_layer(layer_state | default_layer_state);
-    led_t   leds = host_keyboard_led_state();
-    uint8_t mods = get_mods() | get_oneshot_mods();
+    bool show_keys = (held_n > 0) || (have_last && timer_elapsed32(last_time) < SHOW_AFTER_MS);
 
     /* chu ky trang thai: chi ve lai khi co thay doi */
-    uint32_t sig = show_key ? (0x80000000u | last_kc | ((uint32_t)held_n << 16) | ((uint32_t)top << 20))
-                            : ((uint32_t)top | (leds.raw << 4) | ((uint32_t)is_caps_word_on() << 8) | ((uint32_t)mods << 9) |
-                               ((uint32_t)latch_armed << 14) | ((uint32_t)(latch_target != KC_NO) << 15));
-    if (show_key) for (uint8_t i = 0; i < held_n; i++) sig ^= ((uint32_t)held[i] * 2654435761u);
+    uint32_t sig;
+    if (show_keys) {
+        sig = 0x80000000u ^ ((uint32_t)held_n << 16) ^ ((uint32_t)last_kc << 4);
+        for (uint8_t i = 0; i < held_n; i++) sig ^= (uint32_t)held[i] * 2654435761u;
+    } else {
+        uint8_t top = get_highest_layer(layer_state | default_layer_state);
+        sig         = (uint32_t)top ^ ((uint32_t)latch_armed << 8) ^ ((uint32_t)(latch_target != KC_NO) << 9);
+    }
     if (sig == last_sig) return false;
     last_sig = sig;
 
     oled_clear();
-
-    if (show_key) {
-        /* dong tren: layer */
-        oled_set_cursor(0, 0);
-        oled_write_P(PSTR("Layer: "), false);
-        oled_write(layer_name(top), false);
-
-        /* chu to nhat: phim vua bam */
-        char big[12];
-        key_label(last_kc, big);
-        uint8_t len = strlen(big);
-        uint8_t scale = (len <= 5) ? 4 : 3;
-        if (len > 7) { big[7] = 0; }
-        draw_big_text(big, 14, scale);
-
-        /* dong duoi: cac phim dang giu */
-        if (held_n > 1) {
-            char line[24] = "";
-            for (uint8_t i = 0; i < held_n; i++) {
-                char t[12];
-                key_label(held[i], t);
-                if (strlen(line) + strlen(t) + 1 < 21) { strcat(line, t); strcat(line, " "); }
-            }
-            oled_set_cursor(0, 7);
-            oled_write(line, false);
-        }
-    } else {
-        oled_set_cursor(0, 0);
-        oled_write_P(PSTR("   MACROPAD15   \n"), true);
-        oled_write_P(PSTR("\n"), false);
-
-        oled_write_P(PSTR("Layer: "), false);
-        oled_write(layer_name(top), false);
-        oled_write_P(PSTR("\n\n"), false);
-
-        oled_write_P(PSTR("NUM"), leds.num_lock);
-        oled_write_P(PSTR("  "), false);
-        oled_write_P(PSTR("CAPS"), leds.caps_lock);
-        oled_write_P(PSTR("  "), false);
-        oled_write_P(PSTR("CW"), is_caps_word_on());
-        oled_write_P(PSTR("\n\n"), false);
-
-        oled_write_P(PSTR("SFT"), mods & MOD_MASK_SHIFT);
-        oled_write_P(PSTR(" "), false);
-        oled_write_P(PSTR("CTL"), mods & MOD_MASK_CTRL);
-        oled_write_P(PSTR(" "), false);
-        oled_write_P(PSTR("ALT"), mods & MOD_MASK_ALT);
-        oled_write_P(PSTR(" "), false);
-        oled_write_P(PSTR("GUI"), mods & MOD_MASK_GUI);
-
-        /* dong cuoi: trang thai latch */
-        if (latch_armed || latch_target != KC_NO) {
-            char t[12];
-            oled_set_cursor(0, 7);
-            oled_write_P(PSTR("LATCH "), true);
-            if (latch_armed) {
-                oled_write_P(PSTR("?"), true);
-            } else {
-                key_label(latch_target, t);
-                oled_write(t, true);
-            }
-        }
-    }
+    if (show_keys) oled_draw_keys();
+    else           oled_draw_idle();
     return false;
 }
 #endif

@@ -81,6 +81,18 @@ Sua `keyboards/macropad15/keymaps/vial/keymap.c` (Nokia multitap, layer cycle, t
 ## Man hinh OLED (tuy chon)
 - Loai: SSD1306 I2C, 128x64 (mac dinh; doi `OLED_DISPLAY_128X64` thanh `OLED_DISPLAY_128X32` trong `keymaps/vial/config.h`).
 - Noi day: VCC -> 3V3, GND -> GND, **SDA -> D14 (GP20)**, **SCL -> D10 (GP21)**. (Nhan D10/D14 theo so do chan SparkFun, doi chieu voi chu in tren board.)
-- Binh thuong: ten layer, trang thai NUM / CAPS / Caps Word, phim bo tro Shift/Ctrl/Alt/GUI dang giu.
-- Khi bam phim (hoac xoay nut): hien **ten phim bang chu to nhat** o giua man hinh (vd `7`, `ENTER`, `VOL +`, `F11`), dong duoi liet ke cac phim dang giu cung luc. Giu hien 0,7 giay sau khi nha roi tro ve man thong tin. Tu tat sau 60 giay khong dung.
-- Neu khong lap OLED, firmware van chay binh thuong.
+- Man hinh moi (moi nha 2 dong / ten cac phim dang giu): xem muc "Man hinh OLED (tuy chon) - THIET KET moi" o tren.
+### Man hinh khi ranh (2 dong)
+- Dong 1: `MACROPAD15` (10 ky tu, font lon nhat 2 -> 16 px cao).
+- Dong 2: ten layer dang bat (font lon nhat 3 -> 24 px cao), hoac `LATCH ?` khi dang cho chon phim.
+
+### Man hinh khi bam phim
+- 1 phim dang giu: to het man hinh (fit nho nhat de van con).
+- 2 phim dang giu: moi phim cach nhau, moi phim to cho vua man hinh.
+- 3-4 phim dang giu: moi phim cach hang, moi phim to (16 px) cho vua man hinh.
+
+### Tinh trong man hinh
+- Man hinh giu **mo lien tuc khong tat** (`OLED_TIMEOUT 0` trong `config.h`).
+- Khi ranh: dong 2 = ten layer, hoac `LATCH ?` khi pha `LATCH` dang cho chon phim.
+- Khi bam phim: hien ten **tat ca** cac phim dang giu cung luc, moi phim o do sang hon.
+- Giu hien ten phim 0,7 giay sau khi nha roi tro ve man ranh.
