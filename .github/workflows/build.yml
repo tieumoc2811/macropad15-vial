@@ -1,0 +1,43 @@
+name: Build Vial firmware (Macropad15)
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo cua ban
+        uses: actions/checkout@v4
+        with:
+          path: mine
+
+      - name: Checkout vial-qmk
+        uses: actions/checkout@v4
+        with:
+          repository: vial-kb/vial-qmk
+          submodules: recursive
+          path: vial-qmk
+
+      - name: Cai cong cu
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi
+          python3 -m pip install qmk
+
+      - name: Chep keyboard vao vial-qmk
+        run: cp -r mine/keyboards/macropad15 vial-qmk/keyboards/
+
+      - name: Build
+        working-directory: vial-qmk
+        env:
+          QMK_HOME: ${{ github.workspace }}/vial-qmk
+        run: qmk compile -kb macropad15 -km vial
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: macropad15_vial_uf2
+          path: vial-qmk/macropad15_vial.uf2

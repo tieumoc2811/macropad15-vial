@@ -1,0 +1,182 @@
+{
+  "name": "Macropad15",
+  "vendorId": "0xC1A0",
+  "productId": "0x0015",
+  "customKeycodes": [
+    {
+      "name": "Layer Cycle",
+      "title": "Chuyen layer Numpad -> Media -> Nokia",
+      "shortName": "LCYCLE"
+    },
+    {
+      "name": "Nokia 1",
+      "title": "Nokia multitap 1abc",
+      "shortName": "NK1"
+    },
+    {
+      "name": "Nokia 2",
+      "title": "Nokia multitap 2def",
+      "shortName": "NK2"
+    },
+    {
+      "name": "Nokia 3",
+      "title": "Nokia multitap 3ghi",
+      "shortName": "NK3"
+    },
+    {
+      "name": "Nokia 4",
+      "title": "Nokia multitap 4jkl",
+      "shortName": "NK4"
+    },
+    {
+      "name": "Nokia 5",
+      "title": "Nokia multitap 5mno",
+      "shortName": "NK5"
+    },
+    {
+      "name": "Nokia 6",
+      "title": "Nokia multitap 6pqr",
+      "shortName": "NK6"
+    },
+    {
+      "name": "Nokia 7",
+      "title": "Nokia multitap 7stu",
+      "shortName": "NK7"
+    },
+    {
+      "name": "Nokia 8",
+      "title": "Nokia multitap 8vwx",
+      "shortName": "NK8"
+    },
+    {
+      "name": "Nokia 9",
+      "title": "Nokia multitap 9yz",
+      "shortName": "NK9"
+    },
+    {
+      "name": "Nokia 0",
+      "title": "Nokia multitap 0 va dau cach",
+      "shortName": "NK0"
+    },
+    {
+      "name": "Nokia .",
+      "title": "Nokia multitap . , ? !",
+      "shortName": "NK."
+    },
+    {
+      "name": "Tap - Hold /",
+      "title": "Bam = -, giu = /",
+      "shortName": "-//"
+    },
+    {
+      "name": "Tap + Hold *",
+      "title": "Bam = +, giu = *",
+      "shortName": "+/*"
+    },
+    {
+      "name": "C3 F1 F2",
+      "title": "Bam: F1 roi F2",
+      "shortName": "F1F2"
+    },
+    {
+      "name": "C3 F11 PgUp",
+      "title": "Bam: F11 roi Page Up",
+      "shortName": "F11PU"
+    },
+    {
+      "name": "C3 F11 PgDn",
+      "title": "Bam: F11 roi Page Down",
+      "shortName": "F11PD"
+    },
+    {
+      "name": "Latch Any Key",
+      "title": "Bam 1 lan roi bam phim X: X duoc giu lai. Bam lai de nha",
+      "shortName": "LATCH"
+    },
+    {
+      "name": "Toggle Space",
+      "title": "Bam = giu Space, bam lai = nha",
+      "shortName": "TGSPC"
+    },
+    {
+      "name": "Toggle Shift",
+      "title": "Bam = giu Shift, bam lai = nha",
+      "shortName": "TGSFT"
+    },
+    {
+      "name": "Toggle Ctrl",
+      "title": "Bam = giu Ctrl, bam lai = nha",
+      "shortName": "TGCTL"
+    },
+    {
+      "name": "Toggle Alt",
+      "title": "Bam = giu Alt, bam lai = nha",
+      "shortName": "TGALT"
+    }
+  ],
+  "matrix": {
+    "rows": 4,
+    "cols": 5
+  },
+  "layouts": {
+    "keymap": [
+      [
+        {
+          "x": 0.5
+        },
+        "0,0\n\n\n\n\n\n\n\n\ne",
+        "0,1\n\n\n\n\n\n\n\n\ne",
+        "0,4",
+        {
+          "x": 0.5
+        },
+        "0,0",
+        "1,0",
+        "2,0",
+        "3,0",
+        "0,1"
+      ],
+      [
+        {
+          "y": 0.5,
+          "x": 0
+        },
+        "1,0\n\n\n\n\n\n\n\n\ne",
+        "1,1\n\n\n\n\n\n\n\n\ne",
+        {
+          "x": 0.5
+        },
+        "2,0\n\n\n\n\n\n\n\n\ne",
+        "2,1\n\n\n\n\n\n\n\n\ne"
+      ],
+      [
+        {
+          "x": 0
+        },
+        "1,4",
+        {
+          "x": 1
+        },
+        "2,4",
+        {
+          "x": 0.5
+        },
+        "1,1",
+        "2,1",
+        "3,1",
+        "0,2",
+        "1,2"
+      ],
+      [
+        {
+          "x": 4
+        },
+        "2,2",
+        "3,2",
+        "0,3",
+        "1,3",
+        "2,3"
+      ]
+    ]
+  }
+}

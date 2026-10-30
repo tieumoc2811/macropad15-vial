@@ -1,0 +1,8 @@
+﻿# build output
+*.uf2
+*.bin
+*.hex
+*.elf
+*.map
+.build/
+build/
