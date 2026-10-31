@@ -112,6 +112,16 @@
       "name": "Toggle Alt",
       "title": "Bam = giu Alt, bam lai = nha",
       "shortName": "TGALT"
+    },
+    {
+      "name": "Layer Next",
+      "title": "Sang layer nen ke tiep (Base>Numpad>Media>Nokia)",
+      "shortName": "LNEXT"
+    },
+    {
+      "name": "Layer Prev",
+      "title": "Lui ve layer nen truoc do",
+      "shortName": "LPREV"
     }
   ],
   "matrix": {

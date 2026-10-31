@@ -9,6 +9,9 @@
  *   (ENC2)  (ENC3)    k5   k6   k7   k8   k9
  *                     k10  k11  k12  k13  k14
  * Nhan nut to ENC1 = chuyen layer nen (LCYCLE): Base -> Numpad -> Media -> Nokia.
+ * Xoay nut to ENC1 = layer ke tiep (CW) / layer truoc (CCW), cung vong Base..Nokia.
+ * (giu FN + xoay ENC1 = am luong). Doi sang encoder khac: sua encoder_map, hoac keo
+ * LNEXT/LPREV (Custom 22/23 trong Vial) vao encoder bat ky.
  *
  * Ma tran (giong ban ESP32-C3, diode ROW2COL): R0..R3 x C0..C3 cho 15 phim,
  * phim Pn nam o hang n%4, cot n/4. 3 nut nhan encoder: ENC1->R0, ENC2->R1,
@@ -32,7 +35,9 @@ enum custom_keycodes {
     TGL_SPC,          /* bam 1 lan = giu Space, bam lan nua = nha */
     TGL_SFT,          /* bam 1 lan = giu Shift, bam lan nua = nha */
     TGL_CTL,          /* bam 1 lan = giu Ctrl,  bam lan nua = nha */
-    TGL_ALT           /* bam 1 lan = giu Alt,   bam lan nua = nha */
+    TGL_ALT,          /* bam 1 lan = giu Alt,   bam lan nua = nha */
+    LNEXT,            /* sang layer nen ke tiep (dung cho encoder) */
+    LPREV             /* lui ve layer nen truoc do (dung cho encoder) */
 };
 
 #define FN MO(L_FN)
@@ -92,11 +97,11 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
 #if defined(ENCODER_MAP_ENABLE)
 const uint16_t PROGMEM encoder_map[][NUM_ENCODERS][NUM_DIRECTIONS] = {
-    [L_BASE]  = { ENCODER_CCW_CW(KC_VOLD, KC_VOLU), ENCODER_CCW_CW(KC_LEFT, KC_RGHT), ENCODER_CCW_CW(KC_UP,   KC_DOWN) },
+    [L_BASE]  = { ENCODER_CCW_CW(LPREV,   LNEXT), ENCODER_CCW_CW(KC_LEFT, KC_RGHT), ENCODER_CCW_CW(KC_UP,   KC_DOWN) },
     [L_FN1]   = { ENCODER_CCW_CW(KC_TRNS, KC_TRNS), ENCODER_CCW_CW(KC_TRNS, KC_TRNS), ENCODER_CCW_CW(KC_TRNS, KC_TRNS) },
-    [L_NUM]   = { ENCODER_CCW_CW(KC_VOLD, KC_VOLU), ENCODER_CCW_CW(KC_LEFT, KC_RGHT), ENCODER_CCW_CW(KC_UP,   KC_DOWN) },
-    [L_MEDIA] = { ENCODER_CCW_CW(KC_VOLD, KC_VOLU), ENCODER_CCW_CW(KC_MPRV, KC_MNXT), ENCODER_CCW_CW(KC_PGUP, KC_PGDN) },
-    [L_NOKIA] = { ENCODER_CCW_CW(KC_VOLD, KC_VOLU), ENCODER_CCW_CW(KC_LEFT, KC_RGHT), ENCODER_CCW_CW(KC_UP,   KC_DOWN) },
+    [L_NUM]   = { ENCODER_CCW_CW(LPREV,   LNEXT), ENCODER_CCW_CW(KC_LEFT, KC_RGHT), ENCODER_CCW_CW(KC_UP,   KC_DOWN) },
+    [L_MEDIA] = { ENCODER_CCW_CW(LPREV,   LNEXT), ENCODER_CCW_CW(KC_MPRV, KC_MNXT), ENCODER_CCW_CW(KC_PGUP, KC_PGDN) },
+    [L_NOKIA] = { ENCODER_CCW_CW(LPREV,   LNEXT), ENCODER_CCW_CW(KC_LEFT, KC_RGHT), ENCODER_CCW_CW(KC_UP,   KC_DOWN) },
     [L_FN]    = { ENCODER_CCW_CW(KC_VOLD, KC_VOLU), ENCODER_CCW_CW(KC_LEFT, KC_RGHT), ENCODER_CCW_CW(KC_UP,   KC_DOWN) },
     [6]       = { ENCODER_CCW_CW(KC_TRNS, KC_TRNS), ENCODER_CCW_CW(KC_TRNS, KC_TRNS), ENCODER_CCW_CW(KC_TRNS, KC_TRNS) },
     [7]       = { ENCODER_CCW_CW(KC_TRNS, KC_TRNS), ENCODER_CCW_CW(KC_TRNS, KC_TRNS), ENCODER_CCW_CW(KC_TRNS, KC_TRNS) },
@@ -163,11 +168,27 @@ static uint16_t th_timer = 0;
 
 /* ---------- Layer cycle: Base -> Numpad -> Media -> Nokia ---------- */
 static const uint8_t cycle_layers[] = { L_BASE, L_NUM, L_MEDIA, L_NOKIA };
-static uint8_t cycle_idx = 0;
+#define CYCLE_N (sizeof(cycle_layers) / sizeof(cycle_layers[0]))
 
 #ifdef OLED_ENABLE
 static void oled_track_key(uint16_t keycode, bool pressed);
+static void oled_forget_last(void);
 #endif
+
+/* dir = +1: layer ke tiep, -1: layer truoc. Tinh tu layer nen hien tai nen luon dong bo
+ * (ke ca khi layer nen bi doi bang cach khac); layer nen ngoai vong -> bat dau tu Base. */
+static void layer_step(int8_t dir) {
+    uint8_t cur = get_highest_layer(default_layer_state);
+    uint8_t idx = 0;
+    for (uint8_t i = 0; i < CYCLE_N; i++) {
+        if (cycle_layers[i] == cur) { idx = i; break; }
+    }
+    idx = (uint8_t)((idx + CYCLE_N + dir) % CYCLE_N);
+    default_layer_set((layer_state_t)1 << cycle_layers[idx]);
+#ifdef OLED_ENABLE
+    oled_forget_last(); /* hien ngay ten layer, khong hien "CYCLE"/phim vua bam */
+#endif
+}
 
 /* ---------- Latch / toggle phim bat ky ----------
  * TG_LATCH : bam 1 lan -> cho; bam phim X -> X duoc giu vo thoi han
@@ -237,14 +258,18 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     /* phai chay truoc: phim bi latch thi khong gui xuong host theo cach thuong */
     if (latch_process(keycode, record)) return false;
 #ifdef OLED_ENABLE
-    oled_track_key(keycode, record->event.pressed);
+    /* phim doi layer khong hien tren OLED nhu mot phim: chi hien ten layer moi */
+    if (keycode != LCYCLE && keycode != LNEXT && keycode != LPREV)
+        oled_track_key(keycode, record->event.pressed);
 #endif
     switch (keycode) {
         case LCYCLE:
-            if (record->event.pressed) {
-                cycle_idx = (cycle_idx + 1) % (sizeof(cycle_layers) / sizeof(cycle_layers[0]));
-                default_layer_set((layer_state_t)1 << cycle_layers[cycle_idx]);
-            }
+        case LNEXT:
+            if (record->event.pressed) layer_step(+1);
+            return false;
+
+        case LPREV:
+            if (record->event.pressed) layer_step(-1);
             return false;
 
         case SQ_F1F2:
@@ -370,7 +395,6 @@ static void key_label(uint16_t kc, char *out) {
         case QK_BOOT:            strcpy(out, "BOOT"); break;
         case QK_REBOOT:          strcpy(out, "RESET"); break;
         case CW_TOGG:            strcpy(out, "CAPSW"); break;
-        case LCYCLE:             strcpy(out, "CYCLE"); break;
         case SQ_F1F2:            strcpy(out, "F1 F2"); break;
         case SQ_F11PU:           strcpy(out, "F11 PU"); break;
         case SQ_F11PD:           strcpy(out, "F11 PD"); break;
@@ -388,25 +412,58 @@ static void key_label(uint16_t kc, char *out) {
     }
 }
 
-/* ----- Theo doi phim dang bam ----- */
+/* ----- Theo doi phim -----
+ * - held[]  : cac phim dang bi de (hien o goc duoi, chu nho)
+ * - last_kc : phim vua bam gan nhat (hien to o giua) + last_cnt = so lan bam lien tiep
+ *             cung phim do (hien chu nho ben canh). Doi phim khac hoac het thoi gian
+ *             hien (SHOW_AFTER_MS) thi dem lai tu dau.
+ */
 #define HELD_MAX      4
-#define SHOW_AFTER_MS 700 /* giu hien ten phim them 0,7 s sau khi nha */
+#define SHOW_AFTER_MS 1200 /* giu hien phim vua bam them 1,2 s sau khi nha */
+#define COUNT_MAX     999
 static uint16_t held[HELD_MAX];
 static uint8_t  held_n    = 0;
 static uint16_t last_kc   = 0;
+static uint16_t last_cnt  = 0;
 static uint32_t last_time = 0;
 static bool     have_last = false;
+
+static bool is_held(uint16_t kc) {
+    for (uint8_t i = 0; i < held_n; i++)
+        if (held[i] == kc) return true;
+    return false;
+}
+
+/* phim vua bam con duoc hien tren man hinh chinh khong? */
+static bool last_visible(void) {
+    return have_last && (is_held(last_kc) || timer_elapsed32(last_time) < SHOW_AFTER_MS);
+}
+
+/* quen phim vua bam -> man hinh ve ten layer ngay (dung khi doi layer) */
+static void oled_forget_last(void) {
+    have_last = false;
+    last_cnt  = 0;
+}
 
 static void oled_track_key(uint16_t keycode, bool pressed) {
     if (keycode == KC_NO || keycode == KC_TRNS) return;
     if (pressed) {
-        for (uint8_t i = 0; i < held_n; i++)
-            if (held[i] == keycode) goto done;
-        if (held_n < HELD_MAX) {
-            held[held_n++] = keycode;
+        /* dem so lan bam: truoc khi cap nhat last_kc */
+        if (last_visible() && keycode == last_kc) {
+            if (last_cnt < COUNT_MAX) last_cnt++;
         } else {
-            for (uint8_t i = 1; i < HELD_MAX; i++) held[i - 1] = held[i];
-            held[HELD_MAX - 1] = keycode;
+            last_cnt = 1;
+        }
+        last_kc   = keycode;
+        have_last = true;
+
+        if (!is_held(keycode)) {
+            if (held_n < HELD_MAX) {
+                held[held_n++] = keycode;
+            } else {
+                for (uint8_t i = 1; i < HELD_MAX; i++) held[i - 1] = held[i];
+                held[HELD_MAX - 1] = keycode;
+            }
         }
     } else {
         for (uint8_t i = 0; i < held_n; i++) {
@@ -417,10 +474,7 @@ static void oled_track_key(uint16_t keycode, bool pressed) {
             }
         }
     }
-done:
-    last_kc   = keycode;
-    have_last = true;
-    last_time = timer_read32();
+    last_time = timer_read32(); /* tinh thoi gian hien tu lan bam/nha gan nhat */
 }
 
 /* ----- Ve chu phong to: font 5x8 nhan ban s lan ----- */
@@ -456,88 +510,95 @@ static void draw_big_text(const char *str, uint8_t y, uint8_t s) {
     for (uint8_t i = 0; str[i]; i++) draw_big_char(x + i * 6 * s, y, str[i], s);
 }
 
-/* ----- Man hinh khi ranh: dung 2 dong chu to -----
- *   dong 1: "MACROPAD15"
- *   dong 2: ten layer dang bat (hoac "LATCH ?" khi dang cho chon phim)
+/* ve chuoi tu x, y, len y nhan ban s lan */
+static void draw_big_string(const char *str, uint8_t x, uint8_t y, uint8_t s) {
+    for (uint8_t i = 0; str[i]; i++) draw_big_char(x + (uint8_t)(i * 6 * s), y, str[i], s);
+}
+
+/* ----- Bo cuc man hinh 128x64 -----
+ *   vung chinh (y 0..HELD_ROW_Y-1): ten layer (khi ranh) HOAC phim vua bam + "xN"
+ *   hang duoi (y HELD_ROW_Y..63)  : cac phim dang de, chu nho, o goc duoi
  */
+#define HELD_ROW_Y        (OLED_DISPLAY_HEIGHT - 8)
+#define MAIN_H            (HELD_ROW_Y)   /* chieu cao vung chinh */
+#define IDLE_SCALE        3              /* ten layer: chu 24 px cao */
+#define KEY_SCALE_MAX     6              /* phim vua bam: toi da 48 px cao */
+#define COUNT_SCALE       2              /* so lan bam: chu nho 16 px cao */
+#define COUNT_GAP         4              /* khoang cach giua phim va so lan bam */
+#define HELD_CORNER_RIGHT true           /* true: goc duoi phai, false: goc duoi trai */
+
+/* khi ranh: chi ten layer (hoac "LATCH ?" khi dang cho chon phim), ngay giua vung chinh */
 static void oled_draw_idle(void) {
     char line[12];
-
-    strcpy(line, "MACROPAD15");
-    draw_big_text(line, 4, fit_scale(line, 2)); /* 10 ky tu -> 16 px cao */
-
     if (latch_armed) {
         strcpy(line, "LATCH ?");
     } else {
         strncpy(line, layer_name(get_highest_layer(layer_state | default_layer_state)), sizeof(line) - 1);
         line[sizeof(line) - 1] = 0;
     }
-    draw_big_text(line, 34, fit_scale(line, 3)); /* 24 px cao */
+    uint8_t s = fit_scale(line, IDLE_SCALE);
+    draw_big_text(line, (uint8_t)((MAIN_H - 8 * s) / 2), s);
 }
 
-/* ve chuoi tu x, y, len y nhan ban s lan */
-static void draw_big_string(const char *str, uint8_t x, uint8_t y, uint8_t s) {
-    for (uint8_t i = 0; str[i]; i++) draw_big_char(x + (uint8_t)(i * 6 * s), y, str[i], s);
+/* phim vua bam: chu to + "xN" chu nho ben phai, canh theo mep tren cua chu */
+static void oled_draw_last(void) {
+    char label[12], cnt[8];
+    key_label(last_kc, label);
+    if (!label[0]) strcpy(label, "?");
+    snprintf(cnt, sizeof(cnt), "x%u", (unsigned)last_cnt);
+
+    uint8_t cw = text_width(cnt, COUNT_SCALE);
+    uint8_t s  = KEY_SCALE_MAX;
+    while (s > 1 && text_width(label, s) + COUNT_GAP + cw > OLED_DISPLAY_WIDTH) s--;
+
+    uint8_t lw = text_width(label, s);
+    uint8_t tw = (uint8_t)(lw + COUNT_GAP + cw);
+    uint8_t x  = (tw < OLED_DISPLAY_WIDTH) ? (uint8_t)((OLED_DISPLAY_WIDTH - tw) / 2) : 0;
+    uint8_t y  = (uint8_t)((MAIN_H - 8 * s) / 2);
+
+    draw_big_string(label, x, y, s);
+    draw_big_string(cnt, (uint8_t)(x + lw + COUNT_GAP), y, COUNT_SCALE);
 }
 
-/* ----- Man hinh khi bam phim: ten TAT CA phim dang giu, xep ngang ca man hinh -----
- * n=1: to het man hinh; n>1: cac phim cach nhau tren cung 1 hang, scale toi nho nhat.
- */
-static void oled_draw_keys(void) {
-    uint8_t n = held_n ? held_n : 1;
-    char labels[HELD_MAX][12];
-    uint8_t lens[HELD_MAX];
-
-    for (uint8_t i = 0; i < n; i++) {
-        uint16_t kc = held_n ? held[held_n - 1 - i] : last_kc;
-        key_label(kc, labels[i]);
-        lens[i] = (uint8_t)strlen(labels[i]);
-        if (lens[i] == 0) lens[i] = 1;
-    }
-
-    uint8_t s = 6;
+/* cac phim dang de: chu nho o hang cuoi; qua dai thi bo phim cu nhat */
+static void oled_draw_held(void) {
+    if (!held_n) return;
+    char    buf[24];
+    uint8_t first = 0;
     for (;;) {
-        uint16_t w = 0;
-        for (uint8_t i = 0; i < n; i++) w += (uint16_t)(lens[i] * 6 * s - s);
-        if (n > 1) w += (uint16_t)((n - 1) * 4);
-        if ((int)w <= OLED_DISPLAY_WIDTH) break;
-        if (s <= 1) break;
-        s--;
+        buf[0] = 0;
+        for (uint8_t i = first; i < held_n; i++) {
+            char lab[12];
+            key_label(held[i], lab);
+            if (i > first) strcat(buf, " ");
+            strncat(buf, lab, sizeof(buf) - strlen(buf) - 1);
+        }
+        if (text_width(buf, 1) <= OLED_DISPLAY_WIDTH || first + 1 >= held_n) break;
+        first++;
     }
-
-    uint16_t w = 0;
-    for (uint8_t i = 0; i < n; i++) w += (uint16_t)(lens[i] * 6 * s - s);
-    if (n > 1) w += (uint16_t)((n - 1) * 4);
-    uint8_t x = (uint8_t)((OLED_DISPLAY_WIDTH - w) / 2);
-    uint8_t y = (uint8_t)((OLED_DISPLAY_HEIGHT - 8 * s) / 2);
-
-    for (uint8_t i = 0; i < n; i++) {
-        uint16_t tw = (uint16_t)(lens[i] * 6 * s - s);
-        draw_big_string(labels[i], x, y, s);
-        x = (uint16_t)(x + tw + ((n > 1) ? 4 : 0));
-    }
+    uint8_t w = text_width(buf, 1);
+    uint8_t x = 0;
+    if (HELD_CORNER_RIGHT && w < OLED_DISPLAY_WIDTH) x = (uint8_t)(OLED_DISPLAY_WIDTH - w);
+    draw_big_string(buf, x, HELD_ROW_Y, 1);
 }
 
 static uint32_t last_sig = 0xFFFFFFFF;
 
 bool oled_task_user(void) {
-    bool show_keys = (held_n > 0) || (have_last && timer_elapsed32(last_time) < SHOW_AFTER_MS);
+    bool show_last = last_visible();
 
     /* chu ky trang thai: chi ve lai khi co thay doi */
-    uint32_t sig;
-    if (show_keys) {
-        sig = 0x80000000u ^ ((uint32_t)held_n << 16) ^ ((uint32_t)last_kc << 4);
-        for (uint8_t i = 0; i < held_n; i++) sig ^= (uint32_t)held[i] * 2654435761u;
-    } else {
-        uint8_t top = get_highest_layer(layer_state | default_layer_state);
-        sig         = (uint32_t)top ^ ((uint32_t)latch_armed << 8) ^ ((uint32_t)(latch_target != KC_NO) << 9);
-    }
+    uint32_t sig = (uint32_t)get_highest_layer(layer_state | default_layer_state) |
+                   ((uint32_t)latch_armed << 8) | ((uint32_t)show_last << 9) | ((uint32_t)held_n << 10);
+    if (show_last) sig ^= ((uint32_t)last_kc << 12) ^ ((uint32_t)last_cnt * 40503u);
+    for (uint8_t i = 0; i < held_n; i++) sig ^= ((uint32_t)held[i] + 1u) * 2654435761u * (uint32_t)(i + 1);
     if (sig == last_sig) return false;
     last_sig = sig;
 
     oled_clear();
-    if (show_keys) oled_draw_keys();
+    if (show_last) oled_draw_last();
     else           oled_draw_idle();
+    oled_draw_held();
     return false;
 }
 #endif

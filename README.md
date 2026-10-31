@@ -27,11 +27,11 @@ Layer 0 Base (giong ban ESP32-C3) | 1 Layer1 (giong C3) | 2 Numpad | 3 Media | 4
 - Layer 1: V C X Z Up | / . , M Shift | TO(0) [F1,F2] [F11,PgUp] [F11,PgDn] Delete. Cac phim combo bam F11 roi PgUp/PgDn lan luot (khong giu cung luc), y het ban C3.
 - Nut nhan encoder (moi layer): ENC1 = LCYCLE (doi layer nen Base -> Numpad -> Media -> Nokia), ENC2 = Backspace, ENC3 = Tab.
 - Layer 2 Numpad: phim `-` bam = `-`, giu = `/` ; phim `+` bam = `+`, giu = `*`. Layer 3 Media. Layer 4 Nokia: bam lien tiep cung phim trong 600 ms de doi ky tu (1abc 2def ... `.,?!`), co Caps Word va Shift one-shot. Layer 5 FN: F1..F12, RESET, BOOTLOADER, Mute (giu phim goc tren phai o layer 2-4).
-- Nut xoay: to (ENC1) = am luong; nho trai (ENC2) = trai/phai; nho phai (ENC3) = len/xuong. Layer Media: ENC2 = bai truoc/sau, ENC3 = PgUp/PgDn.
+- Nut xoay: to (ENC1) = **layer truoc / ke tiep** (xoay CCW/CW, cung vong Base -> Numpad -> Media -> Nokia; giu FN + xoay = am luong); nho trai (ENC2) = trai/phai; nho phai (ENC3) = len/xuong. Layer Media: ENC2 = bai truoc/sau, ENC3 = PgUp/PgDn.
 
 ## 4b. Latch / Toggle phim bat ky (moi)
 
-Them 5 keycode tuy bien (hien thanh **Custom 17..21** trong Vial):
+Them 5 keycode tuy bien (hien thanh **Custom 17..21** trong Vial; `LNEXT`/`LPREV` = **Custom 22/23**):
 
 | Ten trong Vial | shortName | Hanh vi |
 |---|---|---|
@@ -82,17 +82,14 @@ Sua `keyboards/macropad15/keymaps/vial/keymap.c` (Nokia multitap, layer cycle, t
 - Loai: SSD1306 I2C, 128x64 (mac dinh; doi `OLED_DISPLAY_128X64` thanh `OLED_DISPLAY_128X32` trong `keymaps/vial/config.h`).
 - Noi day: VCC -> 3V3, GND -> GND, **SDA -> D14 (GP20)**, **SCL -> D10 (GP21)**. (Nhan D10/D14 theo so do chan SparkFun, doi chieu voi chu in tren board.)
 - Man hinh moi (moi nha 2 dong / ten cac phim dang giu): xem muc "Man hinh OLED (tuy chon) - THIET KET moi" o tren.
-### Man hinh khi ranh (2 dong)
-- Dong 1: `MACROPAD15` (10 ky tu, font lon nhat 2 -> 16 px cao).
-- Dong 2: ten layer dang bat (font lon nhat 3 -> 24 px cao), hoac `LATCH ?` khi dang cho chon phim.
+### Man hinh khi ranh
+- Chi hien **ten layer** dang bat (chu lon, giua man hinh), hoac `LATCH ?` khi dang cho chon phim.
+- Bam `LCYCLE` (hoac xoay ENC1): chuyen layer va hien ngay ten layer moi, khong hien chu "CYCLE".
 
 ### Man hinh khi bam phim
-- 1 phim dang giu: to het man hinh (fit nho nhat de van con).
-- 2 phim dang giu: moi phim cach nhau, moi phim to cho vua man hinh.
-- 3-4 phim dang giu: moi phim cach hang, moi phim to (16 px) cho vua man hinh.
+- Giua man hinh: phim vua bam, chu to; **ben canh la chu nho `xN`** = so lan bam lien tiep cung phim do (doi phim khac hoac het 1,2 s thi dem lai tu 1).
+- **Goc duoi (phai)**: cac phim dang bi de (toi da 4), chu nho. Muon goc trai: doi `HELD_CORNER_RIGHT` thanh `false` trong `keymap.c`.
 
 ### Tinh trong man hinh
 - Man hinh giu **mo lien tuc khong tat** (`OLED_TIMEOUT 0` trong `config.h`).
-- Khi ranh: dong 2 = ten layer, hoac `LATCH ?` khi pha `LATCH` dang cho chon phim.
-- Khi bam phim: hien ten **tat ca** cac phim dang giu cung luc, moi phim o do sang hon.
-- Giu hien ten phim 0,7 giay sau khi nha roi tro ve man ranh.
+- Giu hien phim vua bam 1,2 giay sau khi nha roi tro ve man ranh.
