@@ -24,3 +24,6 @@
 #define OLED_BRIGHTNESS 255
 /* Man hinh 128x64 (0.96"). Neu dung man 128x32 thi doi thanh OLED_DISPLAY_128X32 */
 #define OLED_DISPLAY_128X64
+
+/* Luu ten layer do nguoi dung dat (EEPROM, 8 layer x 11 byte + 2 byte magic) */
+#define EECONFIG_USER_DATA_SIZE 96

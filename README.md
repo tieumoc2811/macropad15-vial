@@ -25,9 +25,9 @@ Bo cuc theo anh: 15 phim (3 hang x 5 cot) ben phai + 3 nut xoay EC11 co nut nhan
 Layer 0 Base (giong ban ESP32-C3) | 1 Layer1 (giong C3) | 2 Numpad | 3 Media | 4 Nokia | 5 FN | 6, 7 trong.
 - Layer 0 (doc trai->phai, tren->duoi): Shift M , . / | Up Z X C V | Space MO(1) 3 Down TG(1). Giu MO(1) = tam sang layer 1; bam TG(1) = khoa layer 1.
 - Layer 1: V C X Z Up | / . , M Shift | TO(0) [F1,F2] [F11,PgUp] [F11,PgDn] Delete. Cac phim combo bam F11 roi PgUp/PgDn lan luot (khong giu cung luc), y het ban C3.
-- Nut nhan encoder (moi layer): ENC1 = LCYCLE (doi layer nen Base -> Numpad -> Media -> Nokia), ENC2 = Backspace, ENC3 = Tab.
+- Nut nhan encoder (moi layer): nut nho trai = LCYCLE (doi layer nen Base -> Numpad -> Media -> Nokia), nut nho phai = Backspace, nut to = Tab.
 - Layer 2 Numpad: phim `-` bam = `-`, giu = `/` ; phim `+` bam = `+`, giu = `*`. Layer 3 Media. Layer 4 Nokia: bam lien tiep cung phim trong 600 ms de doi ky tu (1abc 2def ... `.,?!`), co Caps Word va Shift one-shot. Layer 5 FN: F1..F12, RESET, BOOTLOADER, Mute (giu phim goc tren phai o layer 2-4).
-- Nut xoay: to (ENC1) = **layer truoc / ke tiep** (xoay CCW/CW, cung vong Base -> Numpad -> Media -> Nokia; giu FN + xoay = am luong); nho trai (ENC2) = trai/phai; nho phai (ENC3) = len/xuong. Layer Media: ENC2 = bai truoc/sau, ENC3 = PgUp/PgDn.
+- Nut xoay: nut to = layer truoc/ke tiep (giu FN + xoay = am luong); nho trai = trai/phai; nho phai = xuong/len. Layer Media: nho trai = bai truoc/sau, nho phai = PgDn/PgUp.
 
 ## 4b. Latch / Toggle phim bat ky (moi)
 
@@ -86,9 +86,24 @@ Sua `keyboards/macropad15/keymaps/vial/keymap.c` (Nokia multitap, layer cycle, t
 - Chi hien **ten layer** dang bat (chu lon, giua man hinh), hoac `LATCH ?` khi dang cho chon phim.
 - Bam `LCYCLE` (hoac xoay ENC1): chuyen layer va hien ngay ten layer moi, khong hien chu "CYCLE".
 
-### Man hinh khi bam phim
-- Giua man hinh: phim vua bam, chu to; **ben canh la chu nho `xN`** = so lan bam lien tiep cung phim do (doi phim khac hoac het 1,2 s thi dem lai tu 1).
-- **Goc duoi (phai)**: cac phim dang bi de (toi da 4), chu nho. Muon goc trai: doi `HELD_CORNER_RIGHT` thanh `false` trong `keymap.c`.
+### Man hinh khi bam phim (ti le chu 4 : 2 : 2)
+- Giua man hinh: phim vua bam, chu to nhat (toi da 32 px).
+- **Goc tren phai**: `xN` = so lan bam lien tiep cung phim do, chu vua (16 px), bang phim dang de. Doi phim khac hoac het 1,2 s thi dem lai tu 1.
+- **Goc duoi phai**: cac phim dang bi de (toi da 4), chu vua (16 px). Muon goc trai: doi `HELD_CORNER_RIGHT` thanh `false` trong `keymap.c`.
+
+### Layer Nokia: hien ky tu dang go
+- Bam `1` lan 1 hien `1`, lan 2 hien `a`, lan 3 `b`, lan 4 `c`... (tuong tu cac phim khac), kem so lan bam `xN`. Phim `0` lan 2 hien `SPACE`.
+
+### Doi ten layer (luu vao EEPROM, giu sau khi rut USB)
+1. Chuyen den layer can doi ten (hoac layer dang hien tren man hinh).
+2. Giu `FN` + bam phim `LRENAME` (layer FN, hang 2 cot 4 - thay cho RESET; hoac keo `LNAME` = Custom 24 vao phim bat ky).
+3. Man hinh hien `RENAME Ln`, ten dang go o giua. Go bang phim Nokia (dung **vi tri phim cua layer Nokia**, du dang o layer nao): bam lien tiep de doi ky tu `1abc`, `2def`...
+   - `Enter` (vi tri phim `ENTER` cua Nokia) = **luu**; `Tab` = **huy**; `Backspace` = xoa ky tu cuoi.
+   - `CAPSW` = dao hoa/thuong; `Shift` = dao hoa/thuong cho 1 ky tu. Mac dinh viet hoa.
+   - Toi da 10 ky tu. Luu ten **rong** = tra ve ten mac dinh.
+4. Trong luc doi ten, xoay ENC1 khong doi layer.
+- Layer FN (khi giu) luon hien `FN`, khong doi ten duoc.
+- Luu y: them vung luu ten lam doi bo cuc EEPROM, nen lan nap dau Vial co the ve keymap mac dinh - nap `flash_nuke.uf2` roi nap lai firmware neu thay loi.
 
 ### Tinh trong man hinh
 - Man hinh giu **mo lien tuc khong tat** (`OLED_TIMEOUT 0` trong `config.h`).
